@@ -1,9 +1,9 @@
+// view/digimon_list_screen.dart
 import 'package:flutter/material.dart';
-import '../controller/digimon_controller.dart';
-import '../widgets/digimon_card.dart';
 import 'package:provider/provider.dart';
-import '../model/digimon_model.dart';
-import '../services/digimon_api_service.dart';
+import '../controller/digimon_controller.dart';
+import 'digimon_detail_screen.dart';
+import 'add_digimon_screen.dart';
 
 class DigimonListScreen extends StatefulWidget {
   @override
@@ -11,52 +11,34 @@ class DigimonListScreen extends StatefulWidget {
 }
 
 class _DigimonListScreenState extends State<DigimonListScreen> {
-  final DigimonService digimonService = DigimonService();
-  List<Digimon> digimons = [];
-  int page = 1;
-
   @override
   void initState() {
     super.initState();
-    _fetchDigimons();
-  }
-
-  Future<void> _fetchDigimons() async {
-    try {
-      final fetchedDigimons = await digimonService.fetchDigimons(page: page);
-      setState(() {
-        digimons.addAll(fetchedDigimons);
-      });
-    } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Failed to load digimons: $e')),
-      );
-    }
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      Provider.of<DigimonController>(context, listen: false).loadDigimons();
+    });
   }
 
   @override
   Widget build(BuildContext context) {
+    final controller = Provider.of<DigimonController>(context);
+    final digimons = controller.digimons;
+
     return Scaffold(
       appBar: AppBar(title: Text('Digimon List')),
-      body: ListView.builder(
+      body: digimons.isEmpty
+          ? Center(child: CircularProgressIndicator())
+          : ListView.builder(
         itemCount: digimons.length,
         itemBuilder: (context, index) {
           final digimon = digimons[index];
           return ListTile(
-            leading: digimon.imageUrl != null && digimon.imageUrl.isNotEmpty
+            leading: digimon.img.isNotEmpty
                 ? Image.network(
-              digimon.imageUrl,
-              loadingBuilder: (context, child, loadingProgress) {
-                if (loadingProgress == null) return child;
-                return Center(
-                  child: CircularProgressIndicator(
-                    value: loadingProgress.expectedTotalBytes != null
-                        ? loadingProgress.cumulativeBytesLoaded /
-                        (loadingProgress.expectedTotalBytes ?? 1)
-                        : null,
-                  ),
-                );
-              },
+              digimon.img,
+              width: 50,
+              height: 50,
+              fit: BoxFit.cover,
               errorBuilder: (context, error, stackTrace) {
                 return Icon(Icons.error, color: Colors.red);
               },
@@ -65,7 +47,13 @@ class _DigimonListScreenState extends State<DigimonListScreen> {
             title: Text(digimon.name),
             subtitle: Text('Level: ${digimon.level}'),
             onTap: () {
-              // Navigate to details screen
+              // Navegar a detalles
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (_) => DigimonDetailScreen(index: index),
+                ),
+              );
             },
           );
         },
@@ -73,7 +61,11 @@ class _DigimonListScreenState extends State<DigimonListScreen> {
       floatingActionButton: FloatingActionButton(
         child: Icon(Icons.add),
         onPressed: () {
-          // Navigate to add screen
+          // Navegar a la pantalla para agregar un nuevo Digimon
+          Navigator.push(
+            context,
+            MaterialPageRoute(builder: (_) => AddDigimonScreen()),
+          );
         },
       ),
     );
